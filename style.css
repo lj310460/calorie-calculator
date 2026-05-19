@@ -347,4 +347,32 @@
     .food-item {
       grid-template-columns: 1fr;
     }
+  }.topbar {
+    display: flex;
+    justify-content: space-between;
+    gap: 18px;
+    align-items: flex-start;
+  }
+  
+  .lang-btn {
+    flex-shrink: 0;
+    background: #111827;
+    color: white;
+    padding: 10px 14px;
+    border-radius: 12px;
+    font-weight: 700;
+  }
+  
+  .lang-btn:hover {
+    background: #374151;
+  }
+  
+  @media (max-width: 700px) {
+    .topbar {
+      flex-direction: column;
+    }
+  
+    .lang-btn {
+      width: 100%;
+    }
   }
