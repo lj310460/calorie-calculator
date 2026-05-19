@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>USDA食物热量计算器</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="app">
+    <section class="layout">
+      <aside class="sidebar">
+        <div class="sidebar-header">
+          <h2>食物分类</h2>
+          <p>点击分类展开，点击食物自动填入。</p >
+        </div>
+
+        <div id="categoryList" class="category-list"></div>
+      </aside>
+
+      <section class="card">
+        <h1>USDA食物热量计算器</h1>
+        <p class="subtitle">
+          底层公式：实际摄入=食物重量×每100g营养数据÷100
+        </p >
+
+        <div class="notice">
+          你现在接入的是本地热量数据库。大部分USDA食物名是英文，建议搜索：chicken、rice、potato、egg、salmon、milk、oat、beef。
+        </div>
+
+        <div class="form-section">
+          <label for="searchInput">搜索食物</label>
+          <input id="searchInput" type="text" placeholder="例如：chicken breast / potato / egg / salmon" />
+          <div id="searchResults" class="search-results"></div>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-item">
+            <label for="foodName">食物名称</label>
+            <input id="foodName" type="text" placeholder="选择食物后自动填入" />
+          </div>
+
+          <div class="form-item">
+            <label for="foodWeight">重量(g)</label>
+            <input id="foodWeight" type="number" placeholder="例如：180" />
+          </div>
+
+          <div class="form-item">
+            <label for="foodKcal">每100g热量(kcal)</label>
+            <input id="foodKcal" type="number" placeholder="自动填入" />
+          </div>
+
+          <div class="form-item">
+            <label for="foodProtein">每100g蛋白质(g)</label>
+            <input id="foodProtein" type="number" placeholder="自动填入" />
+          </div>
+
+          <div class="form-item">
+            <label for="foodCarbs">每100g碳水(g)</label>
+            <input id="foodCarbs" type="number" placeholder="自动填入" />
+          </div>
+
+          <div class="form-item">
+            <label for="foodFat">每100g脂肪(g)</label>
+            <input id="foodFat" type="number" placeholder="自动填入" />
+          </div>
+
+          <div class="form-item">
+            <label for="foodFiber">每100g膳食纤维(g)</label>
+            <input id="foodFiber" type="number" placeholder="自动填入" />
+          </div>
+        </div>
+
+        <button id="addBtn">添加到今日饮食</button>
+
+        <section class="summary">
+          <div>
+            <p>总热量</p >
+            <h2><span id="totalKcal">0</span>kcal</h2>
+          </div>
+          <div>
+            <p>蛋白质</p >
+            <h2><span id="totalProtein">0</span>g</h2>
+          </div>
+          <div>
+            <p>碳水</p >
+            <h2><span id="totalCarbs">0</span>g</h2>
+          </div>
+          <div>
+            <p>脂肪</p >
+            <h2><span id="totalFat">0</span>g</h2>
+          </div>
+          <div>
+            <p>纤维</p >
+            <h2><span id="totalFiber">0</span>g</h2>
+          </div>
+        </section>
+
+        <div class="table-header">
+          <h3>今日饮食列表</h3>
+          <button id="clearBtn" class="clear-btn">清空全部</button>
+        </div>
+
+        <div id="foodList" class="food-list">
+          <p class="empty">还没有添加食物。</p >
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <script src="food-database.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
