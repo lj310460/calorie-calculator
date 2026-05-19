@@ -30,9 +30,90 @@
           <button id="langToggle" class="lang-btn">English</button>
         </div>
 
-        <div class="notice" data-i18n="notice">
-          你现在接入的是本地热量数据库。支持英文搜索，也支持部分常见食物中文搜索，例如：鸡胸、鸡腿、鸡蛋、红薯、土豆、三文鱼。
+        <div class="topbar">
+          <div>
+            <h1 data-i18n="title">食物热量计算器</h1>
+            <p class="subtitle" data-i18n="subtitle">
+              底层公式：实际摄入=食物重量×每100g营养数据÷100
+            </p >
+          </div>
+        
+          <button id="langToggle" class="lang-btn">English</button>
         </div>
+        
+        <div class="notice" data-i18n="notice">
+          当前使用完整本地食物数据库。支持中文搜索和英文搜索。常见食物会显示中文名，复杂食物保留英文原名。
+        </div>
+        
+        <section class="plan-card">
+          <div class="plan-header">
+            <div>
+              <h2>个人计划计算器</h2>
+              <p>填写个人信息后，自动生成每日热量、三大营养素、饮食建议和训练安排。</p >
+            </div>
+          </div>
+        
+          <div class="plan-grid">
+            <div class="plan-item">
+              <label for="profileGender">性别</label>
+              <select id="profileGender">
+                <option value="male">男/Male</option>
+                <option value="female">女/Female</option>
+              </select>
+            </div>
+        
+            <div class="plan-item">
+              <label for="profileAge">年龄</label>
+              <input id="profileAge" type="number" placeholder="例如：20" />
+            </div>
+        
+            <div class="plan-item">
+              <label for="profileHeight">身高(cm)</label>
+              <input id="profileHeight" type="number" placeholder="例如：176" />
+            </div>
+        
+            <div class="plan-item">
+              <label for="profileWeight">体重(kg)</label>
+              <input id="profileWeight" type="number" placeholder="例如：65" />
+            </div>
+        
+            <div class="plan-item">
+              <label for="profileGoal">目标</label>
+              <select id="profileGoal">
+                <option value="gain">增肌/Muscle gain</option>
+                <option value="cut">减脂/Fat loss</option>
+                <option value="maintain">保持现状/Maintain</option>
+                <option value="longevity">养生抗衰/Longevity</option>
+              </select>
+            </div>
+        
+            <div class="plan-item">
+              <label for="profileTraining">训练类型</label>
+              <select id="profileTraining">
+                <option value="strength">力量训练/Strength</option>
+                <option value="bodybuilding">健美训练/Bodybuilding</option>
+                <option value="functional">功能性训练/Functional</option>
+              </select>
+            </div>
+        
+            <div class="plan-item">
+              <label for="profileDays">每周训练天数</label>
+              <select id="profileDays">
+                <option value="2">每周2天</option>
+                <option value="3">每周3天</option>
+                <option value="4">每周4天</option>
+                <option value="5">每周5天</option>
+                <option value="6">每周6天</option>
+              </select>
+            </div>
+          </div>
+        
+          <button id="generatePlanBtn" class="plan-btn">生成我的计划</button>
+        
+          <div id="planResult" class="plan-result">
+            <p class="plan-empty">填写信息后点击“生成我的计划”。</p >
+          </div>
+        </section>
 
         <div class="form-section">
           <label for="searchInput" data-i18n="searchLabel">搜索食物</label>

@@ -20,7 +20,21 @@ const totalProtein = document.getElementById("totalProtein");
 const totalCarbs = document.getElementById("totalCarbs");
 const totalFat = document.getElementById("totalFat");
 const totalFiber = document.getElementById("totalFiber");
+// Day3个人计划计算器
+const profileGender = document.getElementById("profileGender");
+const profileAge = document.getElementById("profileAge");
+const profileHeight = document.getElementById("profileHeight");
+const profileWeight = document.getElementById("profileWeight");
+const profileGoal = document.getElementById("profileGoal");
+const profileTraining = document.getElementById("profileTraining");
+const profileDays = document.getElementById("profileDays");
+const generatePlanBtn = document.getElementById("generatePlanBtn");
+const planResult = document.getElementById("planResult");
 
+const PROFILE_KEY = "userProfile";
+const PLAN_KEY = "userNutritionPlan";
+
+let currentPlan = JSON.parse(localStorage.getItem(PLAN_KEY)) || null;
 const DIARY_KEY = "usdaFoodDiary";
 const LANG_KEY = "siteLanguage";
 
@@ -264,7 +278,390 @@ function calculateByWeight(weight, valuePer100g) {
 function saveDiary() {
   localStorage.setItem(DIARY_KEY, JSON.stringify(diary));
 }
+// ===============================
+// Day3个人计划计算逻辑
+// ===============================
 
+function getGoalName(goal) {
+  const map = {
+    gain: "增肌",
+    cut: "减脂",
+    maintain: "保持现状",
+    longevity: "养生抗衰"
+  };
+  return map[goal] || "保持现状";
+}
+
+function getTrainingName(training) {
+  const map = {
+    strength: "力量训练",
+    bodybuilding: "健美训练",
+    functional: "功能性训练"
+  };
+  return map[training] || "力量训练";
+}
+
+function calculateBMR(gender, weight, height, age) {
+  if (gender === "male") {
+    return 10 * weight + 6.25 * height - 5 * age + 5;
+  }
+
+  return 10 * weight + 6.25 * height - 5 * age - 161;
+}
+
+function getActivityFactor(days) {
+  const d = Number(days);
+
+  if (d <= 2) return 1.35;
+  if (d === 3) return 1.45;
+  if (d === 4) return 1.55;
+  if (d === 5) return 1.65;
+  return 1.75;
+}
+
+function getTargetCalories(tdee, goal) {
+  if (goal === "gain") return tdee + 250;
+  if (goal === "cut") return tdee - 350;
+  if (goal === "longevity") return tdee - 100;
+  return tdee;
+}
+
+function getProteinTarget(weight, goal, training) {
+  let multiplier = 1.6;
+
+  if (goal === "gain") multiplier = 1.8;
+  if (goal === "cut") multiplier = 2.0;
+  if (goal === "maintain") multiplier = 1.6;
+  if (goal === "longevity") multiplier = 1.4;
+
+  if (training === "bodybuilding") multiplier += 0.1;
+  if (training === "strength") multiplier += 0.05;
+
+  return weight * multiplier;
+}
+
+function getFatTarget(weight, goal, gender) {
+  let multiplier = 0.85;
+
+  if (goal === "gain") multiplier = 0.9;
+  if (goal === "cut") multiplier = 0.8;
+  if (goal === "longevity") multiplier = 0.9;
+
+  let fat = weight * multiplier;
+
+  if (gender === "female") {
+    fat = Math.max(fat, 40);
+  } else {
+    fat = Math.max(fat, 45);
+  }
+
+  return fat;
+}
+
+function getFiberTarget(calories) {
+  const fiber = calories / 1000 * 14;
+
+  if (fiber < 25) return 25;
+  if (fiber > 40) return 40;
+
+  return fiber;
+}
+
+function calculateNutritionPlan(profile) {
+  const { gender, age, height, weight, goal, training, days } = profile;
+
+  const bmr = calculateBMR(gender, weight, height, age);
+  const activityFactor = getActivityFactor(days);
+  const tdee = bmr * activityFactor;
+
+  let targetCalories = getTargetCalories(tdee, goal);
+
+  if (targetCalories < bmr * 1.1) {
+    targetCalories = bmr * 1.1;
+  }
+
+  const protein = getProteinTarget(weight, goal, training);
+  const fat = getFatTarget(weight, goal, gender);
+  const fiber = getFiberTarget(targetCalories);
+
+  let carbs = (targetCalories - protein * 4 - fat * 9) / 4;
+
+  if (carbs < 80) {
+    carbs = 80;
+  }
+
+  return {
+    ...profile,
+    bmr: Math.round(bmr),
+    tdee: Math.round(tdee),
+    calories: Math.round(targetCalories),
+    protein: Math.round(protein),
+    carbs: Math.round(carbs),
+    fat: Math.round(fat),
+    fiber: Math.round(fiber)
+  };
+}
+
+function getDiaryTotals() {
+  return diary.reduce(
+    (sum, item) => {
+      sum.kcal += Number(item.totalKcal) || 0;
+      sum.protein += Number(item.totalProtein) || 0;
+      sum.carbs += Number(item.totalCarbs) || 0;
+      sum.fat += Number(item.totalFat) || 0;
+      sum.fiber += Number(item.totalFiber) || 0;
+      return sum;
+    },
+    { kcal: 0, protein: 0, carbs: 0, fat: 0, fiber: 0 }
+  );
+}
+
+function getMealPlan(plan) {
+  if (plan.goal === "gain") {
+    return [
+      "早餐：鸡蛋+燕麦/全麦面包+牛奶或酸奶，保证蛋白质和碳水。",
+      "午餐：鸡胸肉/牛肉/鱼+米饭/土豆/红薯+大量蔬菜。",
+      "训练前：香蕉/米饭/面包，补充训练能量。",
+      "训练后：优质蛋白+主食，帮助恢复和增肌。",
+      "晚餐：鸡腿肉/三文鱼/瘦牛肉+蔬菜+适量主食。"
+    ];
+  }
+
+  if (plan.goal === "cut") {
+    return [
+      "早餐：鸡蛋/酸奶+少量燕麦或水果，控制热量但保证蛋白质。",
+      "午餐：高蛋白肉类+大量蔬菜+适量主食。",
+      "晚餐：鱼/鸡腿肉/豆腐+蔬菜，主食按当天剩余碳水调整。",
+      "加餐：优先选择无糖酸奶、水果或少量坚果。",
+      "减脂重点：蛋白质吃够，油和零食严格控制。"
+    ];
+  }
+
+  if (plan.goal === "longevity") {
+    return [
+      "早餐：鸡蛋/酸奶+水果+燕麦，保证微量营养和纤维。",
+      "午餐：鱼类/豆制品/鸡肉+杂粮主食+深色蔬菜。",
+      "晚餐：清淡高蛋白+多蔬菜，避免过油和过量精制碳水。",
+      "每周建议：深海鱼2–3次，豆类2–4次，彩色蔬菜每天都有。",
+      "养生抗衰重点：稳定血糖、足够蛋白、优质脂肪和高纤维。"
+    ];
+  }
+
+  return [
+    "早餐：蛋白质+主食+水果，保持能量稳定。",
+    "午餐：肉蛋鱼+主食+蔬菜，作为一天营养核心。",
+    "晚餐：优质蛋白+蔬菜+适量碳水，避免过量。",
+    "加餐：根据饥饿程度选择酸奶、水果或坚果。",
+    "保持重点：热量接近TDEE，体重和围度稳定即可。"
+  ];
+}
+
+function getTrainingPlan(plan) {
+  if (plan.training === "strength") {
+    return [
+      "今日主题：全身力量训练。",
+      "深蹲或腿举：3–5组×3–6次。",
+      "卧推或俯卧撑：3–5组×3–6次。",
+      "硬拉或罗马尼亚硬拉：3–4组×3–6次。",
+      "划船或引体向上：3–4组×6–10次。",
+      "核心：平板支撑或Dead Bug，3组。"
+    ];
+  }
+
+  if (plan.training === "bodybuilding") {
+    return [
+      "今日主题：增肌塑形训练。",
+      "目标肌群选择：胸/背/腿/肩/手臂任选一个重点。",
+      "复合动作：3–4组×6–10次。",
+      "孤立动作：3–4组×10–15次。",
+      "最后一组可以接近力竭，但不要动作变形。",
+      "训练后补充蛋白质和碳水，帮助恢复。"
+    ];
+  }
+
+  return [
+    "今日主题：功能性训练。",
+    "热身：动态拉伸+关节活动，8–10分钟。",
+    "核心稳定：Dead Bug/Bird Dog，3组。",
+    "单腿训练：弓步蹲或保加利亚分腿蹲，3组。",
+    "推拉训练：俯卧撑+划船，3–4组。",
+    "结束：轻有氧10–15分钟+拉伸。"
+  ];
+}
+
+function renderProgressLine(label, current, target, unit) {
+  const percent = target > 0 ? Math.min(current / target * 100, 120) : 0;
+  const remaining = target - current;
+  const remainText = remaining >= 0
+    ? `还差${round1(remaining)}${unit}`
+    : `已超${round1(Math.abs(remaining))}${unit}`;
+
+  return `
+    <div class="plan-progress-item">
+      <div class="plan-progress-top">
+        <span>${label}</span>
+        <span>${round1(current)}/${round1(target)}${unit}，${remainText}</span>
+      </div>
+      <div class="plan-bar">
+        <div class="plan-bar-fill" style="width:${Math.min(percent, 100)}%"></div>
+      </div>
+    </div>
+  `;
+}
+
+function renderPlan(plan) {
+  const totals = getDiaryTotals();
+  const mealPlan = getMealPlan(plan);
+  const trainingPlan = getTrainingPlan(plan);
+
+  planResult.innerHTML = `
+    <div class="plan-section">
+      <h3>你的基础结果</h3>
+      <div class="plan-cards">
+        <div class="plan-mini-card">
+          <p>BMR基础代谢</p >
+          <strong>${plan.bmr}kcal</strong>
+        </div>
+        <div class="plan-mini-card">
+          <p>TDEE总消耗</p >
+          <strong>${plan.tdee}kcal</strong>
+        </div>
+        <div class="plan-mini-card">
+          <p>目标热量</p >
+          <strong>${plan.calories}kcal</strong>
+        </div>
+        <div class="plan-mini-card">
+          <p>目标</p >
+          <strong>${getGoalName(plan.goal)}</strong>
+        </div>
+        <div class="plan-mini-card">
+          <p>训练类型</p >
+          <strong>${getTrainingName(plan.training)}</strong>
+        </div>
+      </div>
+    </div>
+
+    <div class="plan-section">
+      <h3>每日营养目标</h3>
+      <div class="plan-cards">
+        <div class="plan-mini-card">
+          <p>蛋白质</p >
+          <strong>${plan.protein}g</strong>
+        </div>
+        <div class="plan-mini-card">
+          <p>碳水</p >
+          <strong>${plan.carbs}g</strong>
+        </div>
+        <div class="plan-mini-card">
+          <p>脂肪</p >
+          <strong>${plan.fat}g</strong>
+        </div>
+        <div class="plan-mini-card">
+          <p>纤维</p >
+          <strong>${plan.fiber}g</strong>
+        </div>
+        <div class="plan-mini-card">
+          <p>训练频率</p >
+          <strong>${plan.days}天/周</strong>
+        </div>
+      </div>
+    </div>
+
+    <div class="plan-section" id="planProgressSection">
+      <h3>今日已吃进度</h3>
+      ${renderProgressLine("热量", totals.kcal, plan.calories, "kcal")}
+      ${renderProgressLine("蛋白质", totals.protein, plan.protein, "g")}
+      ${renderProgressLine("碳水", totals.carbs, plan.carbs, "g")}
+      ${renderProgressLine("脂肪", totals.fat, plan.fat, "g")}
+      ${renderProgressLine("纤维", totals.fiber, plan.fiber, "g")}
+    </div>
+
+    <div class="plan-section">
+      <h3>饮食计划建议</h3>
+      <ul class="plan-text-list">
+        ${mealPlan.map(item => `<li>${item}</li>`).join("")}
+      </ul>
+    </div>
+
+    <div class="plan-section">
+      <h3>今日训练安排推荐</h3>
+      <ul class="plan-text-list">
+        ${trainingPlan.map(item => `<li>${item}</li>`).join("")}
+      </ul>
+    </div>
+
+    <div class="plan-warning">
+      提醒：这是基于公式的基础估算。体重连续2周没有变化时，再微调每日热量100–200kcal。
+    </div>
+  `;
+}
+
+function updatePlanProgress() {
+  if (!currentPlan || !planResult) return;
+  renderPlan(currentPlan);
+}
+
+function saveProfile(profile) {
+  localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+}
+
+function loadProfile() {
+  const saved = JSON.parse(localStorage.getItem(PROFILE_KEY));
+
+  if (!saved) return;
+
+  profileGender.value = saved.gender || "male";
+  profileAge.value = saved.age || "";
+  profileHeight.value = saved.height || "";
+  profileWeight.value = saved.weight || "";
+  profileGoal.value = saved.goal || "maintain";
+  profileTraining.value = saved.training || "strength";
+  profileDays.value = saved.days || "3";
+}
+
+function initPlanCalculator() {
+  if (!generatePlanBtn) return;
+
+  loadProfile();
+
+  if (currentPlan) {
+    renderPlan(currentPlan);
+  }
+
+  generatePlanBtn.addEventListener("click", () => {
+    const profile = {
+      gender: profileGender.value,
+      age: Number(profileAge.value),
+      height: Number(profileHeight.value),
+      weight: Number(profileWeight.value),
+      goal: profileGoal.value,
+      training: profileTraining.value,
+      days: Number(profileDays.value)
+    };
+
+    if (!profile.age || profile.age <= 0) {
+      alert("请输入正确年龄。");
+      return;
+    }
+
+    if (!profile.height || profile.height <= 0) {
+      alert("请输入正确身高。");
+      return;
+    }
+
+    if (!profile.weight || profile.weight <= 0) {
+      alert("请输入正确体重。");
+      return;
+    }
+
+    const plan = calculateNutritionPlan(profile);
+
+    currentPlan = plan;
+    localStorage.setItem(PLAN_KEY, JSON.stringify(plan));
+    saveProfile(profile);
+    renderPlan(plan);
+  });
+}
 function isChinese(text) {
   return /[\u4e00-\u9fff]/.test(text);
 }
@@ -820,7 +1217,7 @@ function renderDiary() {
     totalProtein.textContent = "0";
     totalCarbs.textContent = "0";
     totalFat.textContent = "0";
-    totalFiber.textContent = "0";
+    totalFiber.textContent = "0";updatePlanProgress();
     return;
   }
 
@@ -867,7 +1264,7 @@ function renderDiary() {
       saveDiary();
       renderDiary();
     });
-  });
+  });updatePlanProgress();
 }
 
 searchInput.addEventListener("input", () => {
@@ -950,5 +1347,5 @@ document.addEventListener("click", event => {
     searchResults.style.display = "none";
   }
 });
-
+initPlanCalculator();
 applyLanguage();
