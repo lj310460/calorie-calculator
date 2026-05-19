@@ -25,6 +25,8 @@ const profileGender = document.getElementById("profileGender");
 const profileAge = document.getElementById("profileAge");
 const profileHeight = document.getElementById("profileHeight");
 const profileWeight = document.getElementById("profileWeight");
+const profileTargetWeight = document.getElementById("profileTargetWeight");
+const profileTargetDays = document.getElementById("profileTargetDays");
 const profileGoal = document.getElementById("profileGoal");
 const profileTraining = document.getElementById("profileTraining");
 const profileDays = document.getElementById("profileDays");
@@ -357,16 +359,75 @@ function getFiberTarget(calories) {
 }
 
 function calculateNutritionPlan(profile) {
-  const { gender, age, height, weight, goal, training, days } = profile;
+  const {
+    gender,
+    age,
+    height,
+    weight,
+    targetWeight,
+    targetDays,
+    goal,
+    training,
+    days
+  } = profile;
 
   const bmr = calculateBMR(gender, weight, height, age);
   const activityFactor = getActivityFactor(days);
   const tdee = bmr * activityFactor;
 
-  let targetCalories = getTargetCalories(tdee, goal);
+  const weightChange = targetWeight - weight;
+  const totalEnergyChange = weightChange * 7700;
+  const rawDailyAdjustment = totalEnergyChange / targetDays;
+
+  let safeDailyAdjustment = rawDailyAdjustment;
+  let paceWarning = "";
+  let paceLevel = "正常";
+
+  const weeklyChange = weightChange / targetDays * 7;
+
+  if (weightChange < 0) {
+    const dailyDeficit = Math.abs(rawDailyAdjustment);
+
+    if (dailyDeficit > 700) {
+      safeDailyAdjustment = -700;
+      paceLevel = "过快";
+      paceWarning = "你的减脂目标偏激进。为了保护肌肉、训练状态和代谢，系统已把每日热量缺口限制在约700kcal以内。建议延长达标天数。";
+    } else if (dailyDeficit > 500) {
+      paceLevel = "偏快";
+      paceWarning = "你的减脂速度偏快。可以执行，但要注意蛋白质、睡眠、力量训练和饥饿感管理。";
+    } else {
+      paceLevel = "健康";
+      paceWarning = "你的减脂速度较健康，适合长期执行。";
+    }
+  }
+
+  if (weightChange > 0) {
+    const dailySurplus = rawDailyAdjustment;
+
+    if (dailySurplus > 500) {
+      safeDailyAdjustment = 500;
+      paceLevel = "过快";
+      paceWarning = "你的增重/增肌速度偏快，容易增加过多脂肪。系统已把每日热量盈余限制在约500kcal以内。";
+    } else if (dailySurplus > 300) {
+      paceLevel = "偏快";
+      paceWarning = "你的增肌速度偏快，适合训练强度较高的人。注意观察腰围和体脂变化。";
+    } else {
+      paceLevel = "健康";
+      paceWarning = "你的增肌速度较稳，比较适合提高肌肉量并控制脂肪增长。";
+    }
+  }
+
+  if (weightChange === 0) {
+    safeDailyAdjustment = 0;
+    paceLevel = "维持";
+    paceWarning = "你的目标体重和当前体重一致，系统会按保持现状/体态优化来安排。";
+  }
+
+  let targetCalories = tdee + safeDailyAdjustment;
 
   if (targetCalories < bmr * 1.1) {
     targetCalories = bmr * 1.1;
+    paceWarning += " 当前目标热量不能长期低于基础代谢太多，系统已自动提高到更安全范围。";
   }
 
   const protein = getProteinTarget(weight, goal, training);
@@ -379,6 +440,10 @@ function calculateNutritionPlan(profile) {
     carbs = 80;
   }
 
+  const estimatedDaysWithSafeCalories = Math.abs(weightChange) > 0
+    ? Math.ceil(Math.abs(totalEnergyChange / safeDailyAdjustment))
+    : 0;
+
   return {
     ...profile,
     bmr: Math.round(bmr),
@@ -387,7 +452,14 @@ function calculateNutritionPlan(profile) {
     protein: Math.round(protein),
     carbs: Math.round(carbs),
     fat: Math.round(fat),
-    fiber: Math.round(fiber)
+    fiber: Math.round(fiber),
+    weightChange: round1(weightChange),
+    weeklyChange: round1(weeklyChange),
+    rawDailyAdjustment: Math.round(rawDailyAdjustment),
+    safeDailyAdjustment: Math.round(safeDailyAdjustment),
+    paceLevel,
+    paceWarning,
+    estimatedDaysWithSafeCalories
   };
 }
 
@@ -408,45 +480,66 @@ function getDiaryTotals() {
 function getMealPlan(plan) {
   const goalName = getGoalName(plan.goal);
 
+  const direction = plan.weightChange < 0
+    ? "减重/减脂"
+    : plan.weightChange > 0
+      ? "增重/增肌"
+      : "维持体重";
+
+  const adjustmentText = plan.safeDailyAdjustment > 0
+    ? `每天大约增加${Math.abs(plan.safeDailyAdjustment)}kcal热量盈余`
+    : plan.safeDailyAdjustment < 0
+      ? `每天大约制造${Math.abs(plan.safeDailyAdjustment)}kcal热量缺口`
+      : "每天热量基本维持在总消耗附近";
+
+  const targetSummary = `你当前体重${plan.weight}kg，目标体重${plan.targetWeight}kg，希望${plan.targetDays}天达标，目标方向是${direction}。系统估算你需要${adjustmentText}。当前目标强度为「${plan.paceLevel}」。${plan.paceWarning}`;
+
   if (plan.goal === "gain") {
     return [
-      `总原则：你的当前目标是${goalName}，核心不是乱吃更多，而是在轻微热量盈余下，把蛋白质、训练碳水和恢复做好。`,
-      `每日蛋白质目标约${plan.protein}g，建议分成3–5次摄入。每餐至少25–40g优质蛋白，例如鸡胸肉、鸡腿肉、牛肉、鸡蛋、鱼、酸奶或蛋白粉。`,
-      `碳水目标约${plan.carbs}g，训练日前后优先安排米饭、土豆、红薯、燕麦、面条或全麦面包。碳水不要过低，否则训练质量会下降，增肌效率也会变差。`,
-      `脂肪目标约${plan.fat}g，主要来自鸡蛋黄、三文鱼、橄榄油、坚果、牛油果。不要极低脂饮食，否则激素水平和恢复能力会受影响。`,
-      `早餐建议：鸡蛋2个+燕麦或全麦面包+牛奶/酸奶+水果。这样能提供蛋白质、碳水和微量营养。`,
-      `午餐建议：鸡胸肉/牛肉/鱼类150–220g+米饭/土豆/红薯一份+蔬菜300g左右。午餐是增肌期最重要的一餐之一。`,
-      `训练前1–2小时：吃一份易消化碳水，例如香蕉、米饭、面包、土豆，避免空腹硬练。`,
-      `训练后2小时内：补充蛋白质和碳水，例如鸡腿肉+米饭，或酸奶+燕麦，帮助肌肉恢复和糖原补充。`,
-      `晚餐建议：优质蛋白+蔬菜+适量主食。不要因为晚上怕胖就不吃碳水，增肌期恢复比单纯控热量更重要。`,
-      `监测方法：体重每周上升0.2–0.4kg比较理想。如果两周完全不涨，每天加100–150kcal；如果脂肪涨太快，每天减100kcal。`
+      targetSummary,
+      `总原则：你的当前目标是${goalName}。增肌不是简单多吃，而是在可控热量盈余下提高训练质量、保证蛋白质、安排足够碳水，并通过体重和腰围判断是否长得太快。`,
+      `每日目标热量约${plan.calories}kcal。这个热量已经根据你的目标体重和达标天数调整过。如果你两周体重完全不涨，可以每天再增加100–150kcal；如果腰围涨太快，则减少100kcal左右。`,
+      `蛋白质目标约${plan.protein}g。建议分成3–5餐摄入，每餐至少25–40g优质蛋白。优先选择鸡胸肉、去皮鸡腿肉、牛肉、鱼类、鸡蛋、无糖酸奶、乳清蛋白或酵母蛋白粉。`,
+      `碳水目标约${plan.carbs}g。增肌期碳水非常重要，它决定训练状态和肌糖原储备。训练前后优先安排米饭、土豆、红薯、燕麦、面条、全麦面包等。`,
+      `脂肪目标约${plan.fat}g。脂肪不要过低，优先来自鸡蛋黄、三文鱼、橄榄油、坚果、牛油果。不要大量依靠油炸食品和甜点来凑热量。`,
+      `纤维目标约${plan.fiber}g。增肌也不能只吃肉和米饭，每天建议蔬菜400–600g，水果1–2份，帮助消化、肠道和长期健康。`,
+      `早餐建议：鸡蛋2个+燕麦或全麦面包+牛奶/酸奶+水果。这个组合能提供蛋白质、碳水、脂肪和微量营养。`,
+      `午餐建议：鸡胸肉/牛肉/鱼类150–220g+米饭/土豆/红薯一份+蔬菜300g左右。午餐可以作为一天的主要能量餐。`,
+      `训练前1–2小时：吃一份易消化碳水，例如香蕉、米饭、面包、土豆，避免空腹硬练。训练前不要吃太多高脂食物。`,
+      `训练后2小时内：补充蛋白质和碳水，例如鸡腿肉+米饭，或酸奶+燕麦，帮助恢复和糖原补充。`,
+      `晚餐建议：优质蛋白+蔬菜+适量主食。增肌期晚上不是完全不能吃碳水，关键是总热量和消化舒适度。`,
+      `生活管家建议：每周固定时间称体重3次取平均值，同时记录腰围和训练重量。只看单日体重没有意义。`
     ];
   }
 
   if (plan.goal === "cut") {
     return [
-      `总原则：你的当前目标是${goalName}，核心是温和热量缺口+高蛋白+力量训练，而不是极端节食。`,
-      `每日热量目标约${plan.calories}kcal，建议不要长期低于基础代谢太多，否则容易掉肌肉、暴食反弹、训练状态变差。`,
-      `蛋白质目标约${plan.protein}g，减脂期必须优先吃够。蛋白质能保护肌肉、提高饱腹感，也能让身材更紧实。`,
-      `碳水目标约${plan.carbs}g，不建议完全不吃碳水。训练日可以把碳水集中在早餐、午餐和训练前后。`,
-      `脂肪目标约${plan.fat}g，油脂要控制但不能归零。少吃油炸、奶茶、甜点、坚果过量和重油外卖。`,
-      `纤维目标约${plan.fiber}g，建议每天蔬菜400–600g，搭配水果1–2份。纤维能增强饱腹感，也有利于肠道健康。`,
-      `早餐建议：鸡蛋/无糖酸奶/蛋白粉+少量燕麦或水果。避免高糖面包、奶茶和油炸早餐。`,
+      targetSummary,
+      `总原则：你的当前目标是${goalName}。减脂最重要的是温和热量缺口、高蛋白、力量训练和长期可持续，而不是极端节食。`,
+      `每日目标热量约${plan.calories}kcal。这个热量已经根据你的目标体重和达标天数计算过。如果系统提示偏快或过快，优先延长达标天数，而不是继续压低热量。`,
+      `蛋白质目标约${plan.protein}g。减脂期蛋白质必须优先吃够，它可以保护肌肉、提高饱腹感，让身材更紧实。`,
+      `碳水目标约${plan.carbs}g。不要完全不吃碳水。训练日建议把碳水安排在早餐、午餐和训练前后，晚餐根据当天剩余碳水灵活安排。`,
+      `脂肪目标约${plan.fat}g。油脂要控制，但不能完全归零。少吃油炸、奶茶、甜点、坚果过量和重油外卖。`,
+      `纤维目标约${plan.fiber}g。每天蔬菜建议400–600g，水果1–2份。纤维能增强饱腹感，也能改善肠道状态。`,
+      `早餐建议：鸡蛋/无糖酸奶/蛋白粉+少量燕麦或水果。避免高糖面包、奶茶、油条、炸物。`,
       `午餐建议：鸡胸肉/鱼/牛肉/虾仁+大量蔬菜+一份主食。主食不需要完全去掉，只要控制分量。`,
-      `晚餐建议：蛋白质+蔬菜为主，主食根据当天剩余碳水决定。如果白天碳水不足，晚餐可以适量加红薯或土豆。`,
-      `减脂监测：每周下降0.3–0.7%体重比较健康。如果连续两周不变，再减少100–150kcal或增加日常步数。`,
-      `重点提醒：不要只看体重，还要看腰围、镜子里的线条、训练力量和精神状态。`
+      `晚餐建议：蛋白质+蔬菜为主，主食根据当天剩余碳水决定。如果白天碳水不足，晚餐可以适量加红薯、土豆或米饭。`,
+      `加餐建议：优先无糖酸奶、鸡蛋、水果、蛋白粉。坚果可以吃，但要称量，10–15g就够了。`,
+      `监测方法：每周下降0.3%–0.7%体重比较健康。如果连续两周体重平均值不变，再减少100–150kcal或增加日常步数。`,
+      `重点提醒：不要只看体重，还要看腰围、镜子里的线条、训练力量、睡眠和饥饿感。`
     ];
   }
 
   if (plan.goal === "longevity") {
     return [
-      `总原则：你的当前目标是${goalName}，重点不是极限瘦或极限增肌，而是长期稳定、抗炎、控糖、保肌肉和提高身体功能。`,
-      `每日蛋白质目标约${plan.protein}g，用来维持肌肉量、免疫力、皮肤和代谢质量。年龄越大，蛋白质越不能长期不足。`,
-      `碳水目标约${plan.carbs}g，优先选择低加工碳水，例如燕麦、土豆、红薯、糙米、杂粮饭、豆类和水果。`,
-      `脂肪目标约${plan.fat}g，优先橄榄油、深海鱼、坚果、牛油果、鸡蛋黄，减少反式脂肪和反复油炸食品。`,
-      `纤维目标约${plan.fiber}g，建议每天深色蔬菜+菌菇+豆类+水果，形成稳定的肠道营养环境。`,
-      `早餐建议：鸡蛋/酸奶+燕麦+蓝莓/猕猴桃/苹果。重点是高蛋白、高纤维、低糖波动。`,
+      targetSummary,
+      `总原则：你的当前目标是${goalName}。重点不是极限瘦或极限增肌，而是长期稳定、抗炎、控糖、保肌肉和提高身体功能。`,
+      `每日目标热量约${plan.calories}kcal。养生抗衰不适合长期大幅热量缺口，应该追求体重稳定、血糖稳定和身体状态稳定。`,
+      `蛋白质目标约${plan.protein}g。足够蛋白质有助于维持肌肉量、免疫力、皮肤质量和代谢水平。年龄越大，越不能长期蛋白质不足。`,
+      `碳水目标约${plan.carbs}g。优先选择低加工碳水，例如燕麦、土豆、红薯、糙米、杂粮饭、豆类和水果。`,
+      `脂肪目标约${plan.fat}g。优先橄榄油、深海鱼、坚果、牛油果、鸡蛋黄，减少反式脂肪和反复油炸食品。`,
+      `纤维目标约${plan.fiber}g。建议每天深色蔬菜+菌菇+豆类+水果，形成稳定的肠道营养环境。`,
+      `早餐建议：鸡蛋/酸奶+燕麦+蓝莓/猕猴桃/苹果。重点是高蛋白、高纤维、低血糖波动。`,
       `午餐建议：鱼类/鸡肉/豆腐+杂粮主食+深色蔬菜。每周安排2–3次深海鱼。`,
       `晚餐建议：清淡高蛋白+大量蔬菜，主食适量，避免过晚大量进食。`,
       `每周建议：豆类2–4次，鱼类2–3次，坚果少量，彩色蔬菜每天都有。`,
@@ -455,12 +548,13 @@ function getMealPlan(plan) {
   }
 
   return [
-    `总原则：你的当前目标是${goalName}，重点是让热量接近每日消耗，让体重、围度、精神状态和训练表现保持稳定。`,
+    targetSummary,
+    `总原则：你的当前目标是${goalName}。重点是让热量接近每日消耗，让体重、围度、精神状态和训练表现保持稳定。`,
     `每日目标热量约${plan.calories}kcal。体重如果长期上升，说明热量略高；如果长期下降，说明热量略低。`,
-    `蛋白质目标约${plan.protein}g，建议每餐都有蛋白质来源，不要集中到一餐里。`,
-    `碳水目标约${plan.carbs}g，主要用于维持训练表现、大脑状态和日常活力。`,
-    `脂肪目标约${plan.fat}g，保证激素、皮肤、饱腹感和脂溶性维生素吸收。`,
-    `纤维目标约${plan.fiber}g，建议每天蔬菜400–600g，水果1–2份。`,
+    `蛋白质目标约${plan.protein}g。建议每餐都有蛋白质来源，不要集中到一餐里。`,
+    `碳水目标约${plan.carbs}g。主要用于维持训练表现、大脑状态和日常活力。`,
+    `脂肪目标约${plan.fat}g。保证激素、皮肤、饱腹感和脂溶性维生素吸收。`,
+    `纤维目标约${plan.fiber}g。建议每天蔬菜400–600g，水果1–2份。`,
     `早餐建议：蛋白质+慢碳水+水果，例如鸡蛋+燕麦+牛奶。`,
     `午餐建议：肉蛋鱼+主食+蔬菜，是一天最稳定的营养核心。`,
     `晚餐建议：优质蛋白+蔬菜+适量碳水，避免重油和过量零食。`,
@@ -469,8 +563,11 @@ function getMealPlan(plan) {
 }
 
 function getTrainingPlan(plan) {
+  const targetIntro = `你的体重目标是从${plan.weight}kg到${plan.targetWeight}kg，周期为${plan.targetDays}天。训练安排需要服务于这个目标：减脂期重点保肌肉，增肌期重点提高训练容量和渐进超负荷，维持或抗衰期重点保持力量、关节功能和身体活力。`;
+
   if (plan.training === "strength") {
     return [
+      targetIntro,
       `训练定位：力量训练的核心是提高深蹲、卧推、硬拉、划船、推举等基础动作的力量表现。重点不是把每个肌肉练到很酸，而是提高动作质量、神经募集和渐进超负荷。`,
       `训练频率：每周${plan.days}天。建议采用全身训练或上下肢分化。新手优先全身训练，中级可以上肢/下肢分化。`,
       `热身：5–8分钟低强度有氧+动态拉伸+目标动作空杆或轻重量热身2–4组。不要一上来就上大重量。`,
@@ -479,13 +576,15 @@ function getTrainingPlan(plan) {
       `主项3：硬拉或罗马尼亚硬拉，3–4组×3–6次。不要每次都极限硬拉，疲劳管理很重要。`,
       `辅助动作：划船/引体向上/高位下拉，3–4组×6–10次，用于平衡推拉力量。`,
       `核心训练：平板支撑、Dead Bug、Pallof Press，选择2个动作，每个3组。`,
-      `进阶规则：当某个动作能稳定完成目标次数且动作不变形，下次加2.5–5kg或增加1–2次。`,
+      `减脂期执行重点：不要因为热量缺口就把训练强度降得太低，至少维持主要动作重量，保护肌肉量。`,
+      `增肌期执行重点：保证训练记录，每周尝试在重量、次数或动作控制上进步一点。`,
       `安全提醒：力量训练不要频繁力竭。保留1–2次余力，长期进步比单次爆发更重要。`
     ];
   }
 
   if (plan.training === "bodybuilding") {
     return [
+      targetIntro,
       `训练定位：健美训练的核心是肌肉增长和身体线条。重点是目标肌肉发力、训练容量、动作控制、泵感和渐进超负荷。`,
       `训练频率：每周${plan.days}天。建议按胸/背/腿/肩/手臂或推/拉/腿安排。每个肌群每周训练1.5–2次更理想。`,
       `热身：目标肌群轻重量激活2–3组，比如练胸前做肩胛激活，练背前做下拉激活，练腿前做臀腿激活。`,
@@ -494,12 +593,14 @@ function getTrainingPlan(plan) {
       `训练强度：大多数正式组保留1–3次余力，最后一个孤立动作可以接近力竭，但不要用错误动作硬撑。`,
       `节奏控制：离心阶段慢一点，感受目标肌肉被拉长；向心阶段稳定发力，不要完全借力甩重量。`,
       `休息时间：大动作休息90–180秒，孤立动作休息45–90秒。`,
-      `增肌营养配合：训练前保证碳水，训练后保证蛋白质。只练不吃够，很难长肌肉。`,
+      `减脂期执行重点：训练容量可以略微下降，但主要动作不要完全丢，重点保住肌肉和线条。`,
+      `增肌期执行重点：保证碳水和睡眠，训练后补充蛋白质和碳水。只练不吃够，很难长肌肉。`,
       `记录建议：记录动作、重量、次数、组数和主观感受。健美训练不是越累越好，而是可重复、可进步。`
     ];
   }
 
   return [
+    targetIntro,
     `训练定位：功能性训练的核心是让身体更好用，包括核心稳定、髋膝踝控制、肩胛稳定、单腿能力、心肺和灵活性。`,
     `训练频率：每周${plan.days}天。适合想改善体态、运动能力、核心力量、关节稳定和日常活动质量的人。`,
     `热身：动态拉伸8–10分钟，包括髋关节绕环、踝关节活动、胸椎旋转、肩胛控制。`,
@@ -509,6 +610,8 @@ function getTrainingPlan(plan) {
     `身体协调：农夫走、药球旋转、爬行类动作、壶铃摆动，根据能力选择。`,
     `心肺部分：训练后做10–20分钟中低强度有氧，或短间歇循环训练。`,
     `拉伸恢复：重点放在髋屈肌、腘绳肌、胸小肌、背阔肌和小腿。`,
+    `减脂期执行重点：功能性训练可以提高活动量和身体控制，但仍建议保留一定抗阻训练，避免只做有氧。`,
+    `增肌期执行重点：功能性训练可以作为辅助，但如果目标是明显增肌，需要增加抗阻训练容量。`,
     `进阶规则：先提高动作控制，再加速度、负重和复杂度。功能性训练最怕动作乱但强度很高。`
   ];
 }
@@ -540,30 +643,34 @@ function renderPlan(plan) {
 
   planResult.innerHTML = `
     <div class="plan-section">
-      <h3>你的基础结果</h3>
-      <div class="plan-cards">
-        <div class="plan-mini-card">
-          <p>BMR基础代谢</p >
-          <strong>${plan.bmr}kcal</strong>
-        </div>
-        <div class="plan-mini-card">
-          <p>TDEE总消耗</p >
-          <strong>${plan.tdee}kcal</strong>
-        </div>
-        <div class="plan-mini-card">
-          <p>目标热量</p >
-          <strong>${plan.calories}kcal</strong>
-        </div>
-        <div class="plan-mini-card">
-          <p>目标</p >
-          <strong>${getGoalName(plan.goal)}</strong>
-        </div>
-        <div class="plan-mini-card">
-          <p>训练类型</p >
-          <strong>${getTrainingName(plan.training)}</strong>
-        </div>
-      </div>
+  <h3>你的基础结果</h3>
+  <div class="plan-cards">
+    <div class="plan-mini-card">
+      <p>BMR基础代谢</p >
+      <strong>${plan.bmr}kcal</strong>
     </div>
+    <div class="plan-mini-card">
+      <p>TDEE总消耗</p >
+      <strong>${plan.tdee}kcal</strong>
+    </div>
+    <div class="plan-mini-card">
+      <p>目标热量</p >
+      <strong>${plan.calories}kcal</strong>
+    </div>
+    <div class="plan-mini-card">
+      <p>当前→目标</p >
+      <strong>${plan.weight}→${plan.targetWeight}kg</strong>
+    </div>
+    <div class="plan-mini-card">
+      <p>达标天数</p >
+      <strong>${plan.targetDays}天</strong>
+    </div>
+  </div>
+
+  <div class="plan-warning">
+    目标变化：${plan.weightChange}kg；预计每周变化：${plan.weeklyChange}kg；每日热量调整：${plan.safeDailyAdjustment}kcal。目标强度：${plan.paceLevel}。${plan.paceWarning}
+  </div>
+</div>
 
     <div class="plan-section">
       <h3>每日营养目标</h3>
@@ -638,6 +745,8 @@ function loadProfile() {
   profileAge.value = saved.age || "";
   profileHeight.value = saved.height || "";
   profileWeight.value = saved.weight || "";
+  profileTargetWeight.value = saved.targetWeight || "";
+profileTargetDays.value = saved.targetDays || "";
   profileGoal.value = saved.goal || "maintain";
   profileTraining.value = saved.training || "strength";
   profileDays.value = saved.days || "3";
@@ -658,6 +767,8 @@ function initPlanCalculator() {
       age: Number(profileAge.value),
       height: Number(profileHeight.value),
       weight: Number(profileWeight.value),
+      targetWeight: Number(profileTargetWeight.value),
+      targetDays: Number(profileTargetDays.value),
       goal: profileGoal.value,
       training: profileTraining.value,
       days: Number(profileDays.value)
@@ -677,7 +788,15 @@ function initPlanCalculator() {
       alert("请输入正确体重。");
       return;
     }
-
+    if (!profile.targetWeight || profile.targetWeight <= 0) {
+      alert("请输入正确目标体重。");
+      return;
+    }
+    
+    if (!profile.targetDays || profile.targetDays <= 0) {
+      alert("请输入正确达标天数。");
+      return;
+    }
     const plan = calculateNutritionPlan(profile);
 
     currentPlan = plan;
