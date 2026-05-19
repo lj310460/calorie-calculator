@@ -1,7 +1,7 @@
 const searchInput = document.getElementById("searchInput");
 const searchResults = document.getElementById("searchResults");
-const categoryList = document.getElementById("categoryList");
-const langToggle = document.getElementById("langToggle");
+const categoryList = null;
+const langToggle = null;
 
 const foodName = document.getElementById("foodName");
 const foodWeight = document.getElementById("foodWeight");
@@ -39,7 +39,7 @@ const DIARY_KEY = "usdaFoodDiary";
 const LANG_KEY = "siteLanguage";
 
 let diary = JSON.parse(localStorage.getItem(DIARY_KEY)) || [];
-let currentLang = localStorage.getItem(LANG_KEY) || "zh";
+let currentLang = "zh";
 
 const i18n = {
   zh: {
@@ -238,21 +238,10 @@ function t(key) {
 }
 
 function applyLanguage() {
-  document.documentElement.lang = currentLang === "zh" ? "zh-CN" : "en";
+  currentLang = "zh";
 
-  document.querySelectorAll("[data-i18n]").forEach(element => {
-    element.textContent = t(element.dataset.i18n);
-  });
+  document.documentElement.lang = "zh-CN";
 
-  document.querySelectorAll("[data-i18n-placeholder]").forEach(element => {
-    element.placeholder = t(element.dataset.i18nPlaceholder);
-  });
-
-  if (langToggle) {
-    langToggle.textContent = currentLang === "zh" ? "English" : "中文";
-  }
-
-  renderCategoryList();
   renderDiary();
 
   if (searchInput.value.trim()) {
@@ -417,75 +406,110 @@ function getDiaryTotals() {
 }
 
 function getMealPlan(plan) {
+  const goalName = getGoalName(plan.goal);
+
   if (plan.goal === "gain") {
     return [
-      "早餐：鸡蛋+燕麦/全麦面包+牛奶或酸奶，保证蛋白质和碳水。",
-      "午餐：鸡胸肉/牛肉/鱼+米饭/土豆/红薯+大量蔬菜。",
-      "训练前：香蕉/米饭/面包，补充训练能量。",
-      "训练后：优质蛋白+主食，帮助恢复和增肌。",
-      "晚餐：鸡腿肉/三文鱼/瘦牛肉+蔬菜+适量主食。"
+      `总原则：你的当前目标是${goalName}，核心不是乱吃更多，而是在轻微热量盈余下，把蛋白质、训练碳水和恢复做好。`,
+      `每日蛋白质目标约${plan.protein}g，建议分成3–5次摄入。每餐至少25–40g优质蛋白，例如鸡胸肉、鸡腿肉、牛肉、鸡蛋、鱼、酸奶或蛋白粉。`,
+      `碳水目标约${plan.carbs}g，训练日前后优先安排米饭、土豆、红薯、燕麦、面条或全麦面包。碳水不要过低，否则训练质量会下降，增肌效率也会变差。`,
+      `脂肪目标约${plan.fat}g，主要来自鸡蛋黄、三文鱼、橄榄油、坚果、牛油果。不要极低脂饮食，否则激素水平和恢复能力会受影响。`,
+      `早餐建议：鸡蛋2个+燕麦或全麦面包+牛奶/酸奶+水果。这样能提供蛋白质、碳水和微量营养。`,
+      `午餐建议：鸡胸肉/牛肉/鱼类150–220g+米饭/土豆/红薯一份+蔬菜300g左右。午餐是增肌期最重要的一餐之一。`,
+      `训练前1–2小时：吃一份易消化碳水，例如香蕉、米饭、面包、土豆，避免空腹硬练。`,
+      `训练后2小时内：补充蛋白质和碳水，例如鸡腿肉+米饭，或酸奶+燕麦，帮助肌肉恢复和糖原补充。`,
+      `晚餐建议：优质蛋白+蔬菜+适量主食。不要因为晚上怕胖就不吃碳水，增肌期恢复比单纯控热量更重要。`,
+      `监测方法：体重每周上升0.2–0.4kg比较理想。如果两周完全不涨，每天加100–150kcal；如果脂肪涨太快，每天减100kcal。`
     ];
   }
 
   if (plan.goal === "cut") {
     return [
-      "早餐：鸡蛋/酸奶+少量燕麦或水果，控制热量但保证蛋白质。",
-      "午餐：高蛋白肉类+大量蔬菜+适量主食。",
-      "晚餐：鱼/鸡腿肉/豆腐+蔬菜，主食按当天剩余碳水调整。",
-      "加餐：优先选择无糖酸奶、水果或少量坚果。",
-      "减脂重点：蛋白质吃够，油和零食严格控制。"
+      `总原则：你的当前目标是${goalName}，核心是温和热量缺口+高蛋白+力量训练，而不是极端节食。`,
+      `每日热量目标约${plan.calories}kcal，建议不要长期低于基础代谢太多，否则容易掉肌肉、暴食反弹、训练状态变差。`,
+      `蛋白质目标约${plan.protein}g，减脂期必须优先吃够。蛋白质能保护肌肉、提高饱腹感，也能让身材更紧实。`,
+      `碳水目标约${plan.carbs}g，不建议完全不吃碳水。训练日可以把碳水集中在早餐、午餐和训练前后。`,
+      `脂肪目标约${plan.fat}g，油脂要控制但不能归零。少吃油炸、奶茶、甜点、坚果过量和重油外卖。`,
+      `纤维目标约${plan.fiber}g，建议每天蔬菜400–600g，搭配水果1–2份。纤维能增强饱腹感，也有利于肠道健康。`,
+      `早餐建议：鸡蛋/无糖酸奶/蛋白粉+少量燕麦或水果。避免高糖面包、奶茶和油炸早餐。`,
+      `午餐建议：鸡胸肉/鱼/牛肉/虾仁+大量蔬菜+一份主食。主食不需要完全去掉，只要控制分量。`,
+      `晚餐建议：蛋白质+蔬菜为主，主食根据当天剩余碳水决定。如果白天碳水不足，晚餐可以适量加红薯或土豆。`,
+      `减脂监测：每周下降0.3–0.7%体重比较健康。如果连续两周不变，再减少100–150kcal或增加日常步数。`,
+      `重点提醒：不要只看体重，还要看腰围、镜子里的线条、训练力量和精神状态。`
     ];
   }
 
   if (plan.goal === "longevity") {
     return [
-      "早餐：鸡蛋/酸奶+水果+燕麦，保证微量营养和纤维。",
-      "午餐：鱼类/豆制品/鸡肉+杂粮主食+深色蔬菜。",
-      "晚餐：清淡高蛋白+多蔬菜，避免过油和过量精制碳水。",
-      "每周建议：深海鱼2–3次，豆类2–4次，彩色蔬菜每天都有。",
-      "养生抗衰重点：稳定血糖、足够蛋白、优质脂肪和高纤维。"
+      `总原则：你的当前目标是${goalName}，重点不是极限瘦或极限增肌，而是长期稳定、抗炎、控糖、保肌肉和提高身体功能。`,
+      `每日蛋白质目标约${plan.protein}g，用来维持肌肉量、免疫力、皮肤和代谢质量。年龄越大，蛋白质越不能长期不足。`,
+      `碳水目标约${plan.carbs}g，优先选择低加工碳水，例如燕麦、土豆、红薯、糙米、杂粮饭、豆类和水果。`,
+      `脂肪目标约${plan.fat}g，优先橄榄油、深海鱼、坚果、牛油果、鸡蛋黄，减少反式脂肪和反复油炸食品。`,
+      `纤维目标约${plan.fiber}g，建议每天深色蔬菜+菌菇+豆类+水果，形成稳定的肠道营养环境。`,
+      `早餐建议：鸡蛋/酸奶+燕麦+蓝莓/猕猴桃/苹果。重点是高蛋白、高纤维、低糖波动。`,
+      `午餐建议：鱼类/鸡肉/豆腐+杂粮主食+深色蔬菜。每周安排2–3次深海鱼。`,
+      `晚餐建议：清淡高蛋白+大量蔬菜，主食适量，避免过晚大量进食。`,
+      `每周建议：豆类2–4次，鱼类2–3次，坚果少量，彩色蔬菜每天都有。`,
+      `生活管家建议：睡眠、压力、日照、步数和力量训练同样重要。抗衰不是靠某一种食物，而是靠长期系统稳定。`
     ];
   }
 
   return [
-    "早餐：蛋白质+主食+水果，保持能量稳定。",
-    "午餐：肉蛋鱼+主食+蔬菜，作为一天营养核心。",
-    "晚餐：优质蛋白+蔬菜+适量碳水，避免过量。",
-    "加餐：根据饥饿程度选择酸奶、水果或坚果。",
-    "保持重点：热量接近TDEE，体重和围度稳定即可。"
+    `总原则：你的当前目标是${goalName}，重点是让热量接近每日消耗，让体重、围度、精神状态和训练表现保持稳定。`,
+    `每日目标热量约${plan.calories}kcal。体重如果长期上升，说明热量略高；如果长期下降，说明热量略低。`,
+    `蛋白质目标约${plan.protein}g，建议每餐都有蛋白质来源，不要集中到一餐里。`,
+    `碳水目标约${plan.carbs}g，主要用于维持训练表现、大脑状态和日常活力。`,
+    `脂肪目标约${plan.fat}g，保证激素、皮肤、饱腹感和脂溶性维生素吸收。`,
+    `纤维目标约${plan.fiber}g，建议每天蔬菜400–600g，水果1–2份。`,
+    `早餐建议：蛋白质+慢碳水+水果，例如鸡蛋+燕麦+牛奶。`,
+    `午餐建议：肉蛋鱼+主食+蔬菜，是一天最稳定的营养核心。`,
+    `晚餐建议：优质蛋白+蔬菜+适量碳水，避免重油和过量零食。`,
+    `维持期最重要的是建立可持续饮食，不需要每天完美，但一周平均要稳定。`
   ];
 }
 
 function getTrainingPlan(plan) {
   if (plan.training === "strength") {
     return [
-      "今日主题：全身力量训练。",
-      "深蹲或腿举：3–5组×3–6次。",
-      "卧推或俯卧撑：3–5组×3–6次。",
-      "硬拉或罗马尼亚硬拉：3–4组×3–6次。",
-      "划船或引体向上：3–4组×6–10次。",
-      "核心：平板支撑或Dead Bug，3组。"
+      `训练定位：力量训练的核心是提高深蹲、卧推、硬拉、划船、推举等基础动作的力量表现。重点不是把每个肌肉练到很酸，而是提高动作质量、神经募集和渐进超负荷。`,
+      `训练频率：每周${plan.days}天。建议采用全身训练或上下肢分化。新手优先全身训练，中级可以上肢/下肢分化。`,
+      `热身：5–8分钟低强度有氧+动态拉伸+目标动作空杆或轻重量热身2–4组。不要一上来就上大重量。`,
+      `主项1：深蹲或腿举，3–5组×3–6次，组间休息2–4分钟。重点是稳定、深度和核心紧张。`,
+      `主项2：卧推或俯卧撑负重，3–5组×3–6次，组间休息2–4分钟。重点是肩胛稳定和推起路径。`,
+      `主项3：硬拉或罗马尼亚硬拉，3–4组×3–6次。不要每次都极限硬拉，疲劳管理很重要。`,
+      `辅助动作：划船/引体向上/高位下拉，3–4组×6–10次，用于平衡推拉力量。`,
+      `核心训练：平板支撑、Dead Bug、Pallof Press，选择2个动作，每个3组。`,
+      `进阶规则：当某个动作能稳定完成目标次数且动作不变形，下次加2.5–5kg或增加1–2次。`,
+      `安全提醒：力量训练不要频繁力竭。保留1–2次余力，长期进步比单次爆发更重要。`
     ];
   }
 
   if (plan.training === "bodybuilding") {
     return [
-      "今日主题：增肌塑形训练。",
-      "目标肌群选择：胸/背/腿/肩/手臂任选一个重点。",
-      "复合动作：3–4组×6–10次。",
-      "孤立动作：3–4组×10–15次。",
-      "最后一组可以接近力竭，但不要动作变形。",
-      "训练后补充蛋白质和碳水，帮助恢复。"
+      `训练定位：健美训练的核心是肌肉增长和身体线条。重点是目标肌肉发力、训练容量、动作控制、泵感和渐进超负荷。`,
+      `训练频率：每周${plan.days}天。建议按胸/背/腿/肩/手臂或推/拉/腿安排。每个肌群每周训练1.5–2次更理想。`,
+      `热身：目标肌群轻重量激活2–3组，比如练胸前做肩胛激活，练背前做下拉激活，练腿前做臀腿激活。`,
+      `复合动作：每次训练先安排1–2个大动作，例如卧推、划船、深蹲、腿举、肩推，每个3–4组×6–10次。`,
+      `孤立动作：再安排2–4个孤立动作，例如飞鸟、侧平举、腿屈伸、腿弯举、二头弯举、三头下压，每个3–4组×10–15次。`,
+      `训练强度：大多数正式组保留1–3次余力，最后一个孤立动作可以接近力竭，但不要用错误动作硬撑。`,
+      `节奏控制：离心阶段慢一点，感受目标肌肉被拉长；向心阶段稳定发力，不要完全借力甩重量。`,
+      `休息时间：大动作休息90–180秒，孤立动作休息45–90秒。`,
+      `增肌营养配合：训练前保证碳水，训练后保证蛋白质。只练不吃够，很难长肌肉。`,
+      `记录建议：记录动作、重量、次数、组数和主观感受。健美训练不是越累越好，而是可重复、可进步。`
     ];
   }
 
   return [
-    "今日主题：功能性训练。",
-    "热身：动态拉伸+关节活动，8–10分钟。",
-    "核心稳定：Dead Bug/Bird Dog，3组。",
-    "单腿训练：弓步蹲或保加利亚分腿蹲，3组。",
-    "推拉训练：俯卧撑+划船，3–4组。",
-    "结束：轻有氧10–15分钟+拉伸。"
+    `训练定位：功能性训练的核心是让身体更好用，包括核心稳定、髋膝踝控制、肩胛稳定、单腿能力、心肺和灵活性。`,
+    `训练频率：每周${plan.days}天。适合想改善体态、运动能力、核心力量、关节稳定和日常活动质量的人。`,
+    `热身：动态拉伸8–10分钟，包括髋关节绕环、踝关节活动、胸椎旋转、肩胛控制。`,
+    `核心稳定：Dead Bug、Bird Dog、Pallof Press，选择2–3个动作，每个3组×8–12次。重点不是快，而是稳。`,
+    `下肢功能：弓步蹲、保加利亚分腿蹲、臀桥、单腿硬拉，选择2个动作，每个3组×8–12次。`,
+    `上肢推拉：俯卧撑、哑铃划船、弹力带划船、肩推，选择2–3个动作，每个3组×8–12次。`,
+    `身体协调：农夫走、药球旋转、爬行类动作、壶铃摆动，根据能力选择。`,
+    `心肺部分：训练后做10–20分钟中低强度有氧，或短间歇循环训练。`,
+    `拉伸恢复：重点放在髋屈肌、腘绳肌、胸小肌、背阔肌和小腿。`,
+    `进阶规则：先提高动作控制，再加速度、负重和复杂度。功能性训练最怕动作乱但强度很高。`
   ];
 }
 
@@ -1151,36 +1175,7 @@ function groupFoodsByCategory() {
 }
 
 function renderCategoryList() {
-  const groups = groupFoodsByCategory();
-
-  categoryList.innerHTML = "";
-
-  groups.forEach(([category, foods]) => {
-    const details = document.createElement("details");
-    details.className = "category-group";
-
-    const summary = document.createElement("summary");
-    summary.innerHTML = `
-      <span>${category}</span>
-      <span class="category-count">${foods.length}</span>
-    `;
-
-    const foodsContainer = document.createElement("div");
-    foodsContainer.className = "category-foods";
-    foodsContainer.dataset.rendered = "false";
-
-    details.appendChild(summary);
-    details.appendChild(foodsContainer);
-
-    details.addEventListener("toggle", () => {
-      if (details.open && foodsContainer.dataset.rendered === "false") {
-        renderFoodsInsideCategory(foodsContainer, foods);
-        foodsContainer.dataset.rendered = "true";
-      }
-    });
-
-    categoryList.appendChild(details);
-  });
+  // 左侧食品分类已移除，这里保留空函数，防止旧代码调用时报错。
 }
 
 function renderFoodsInsideCategory(container, foods) {

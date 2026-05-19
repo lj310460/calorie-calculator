@@ -540,4 +540,64 @@
   .plan-cards {
     grid-template-columns: repeat(5, 1fr);
   }
+}/* ===============================
+   移除左侧分类后的单栏布局
+================================ */
+
+.single-layout {
+  max-width: 980px;
+  margin: 0 auto;
+  display: block;
+}
+
+.sidebar {
+  display: none;
+}
+
+.card {
+  width: 100%;
+}
+
+.topbar {
+  display: block;
+}
+
+.lang-btn {
+  display: none;
+}
+
+/* 手机上更舒服 */
+@media (max-width: 700px) {
+  .app {
+    padding: 10px;
+  }
+
+  .card {
+    padding: 18px;
+    border-radius: 18px;
+  }
+
+  h1 {
+    font-size: 24px;
+  }
+
+  .subtitle {
+    font-size: 14px;
+  }
+
+  .notice {
+    font-size: 13px;
+  }
+
+  .summary {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .plan-cards {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .plan-mini-card strong {
+    font-size: 18px;
+  }
 }
