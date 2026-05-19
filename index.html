@@ -20,14 +20,6 @@
           </div>
 
         </div>
-
-        <div class="topbar">
-          <div>
-            <h1 data-i18n="title">食物热量计算器</h1>
-            <p class="subtitle" data-i18n="subtitle">
-              底层公式：实际摄入=食物重量×每100g营养数据÷100
-            </p >
-          </div>
         
           <button id="langToggle" class="lang-btn">English</button>
         </div>
@@ -94,7 +86,16 @@
                 <option value="functional">功能性训练/Functional</option>
               </select>
             </div>
-        
+            <div class="plan-item">
+              <label for="profileBodyPart">锻炼部位</label>
+              <select id="profileBodyPart">
+                <option value="chest">胸</option>
+                <option value="legs">腿</option>
+                <option value="core">核心</option>
+                <option value="back">背</option>
+                <option value="arms">手臂</option>
+              </select>
+            </div>
             <div class="plan-item">
               <label for="profileDays">每周训练天数</label>
               <select id="profileDays">
